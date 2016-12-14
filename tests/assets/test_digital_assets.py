@@ -17,7 +17,7 @@ def test_asset_transfer(b, user_pk, user_sk):
     tx_transfer_signed = tx_transfer.sign([user_sk])
 
     assert tx_transfer_signed.validate(b) == tx_transfer_signed
-    assert tx_transfer_signed.asset.data_id == tx_create.id
+    assert tx_transfer_signed.asset.id == tx_create.id
 
 
 def test_validate_bad_asset_creation(b, user_pk):
@@ -66,7 +66,7 @@ def test_validate_transfer_asset_id_mismatch(b, user_pk, user_sk):
     tx_create = b.get_transaction(tx_create.txid)
     tx_transfer = Transaction.transfer(tx_create.to_inputs(), [([user_pk], 1)],
                                        AssetLink.from_inputs(tx_create))
-    tx_transfer.asset.data_id = 'aaa'
+    tx_transfer.asset.id = 'aaa'
     tx_transfer_signed = tx_transfer.sign([user_sk])
     with pytest.raises(AssetIdMismatch):
         tx_transfer_signed.validate(b)
@@ -78,7 +78,7 @@ def test_get_asset_id_create_transaction(b, user_pk):
     tx_create = Transaction.create([b.me], [([user_pk], 1)])
     asset_id = Asset.get_asset_id(tx_create)
 
-    assert asset_id == tx_create.asset.data_id
+    assert asset_id == tx_create.id
 
 
 @pytest.mark.usefixtures('inputs')
@@ -100,7 +100,7 @@ def test_get_asset_id_transfer_transaction(b, user_pk, user_sk):
     b.write_vote(vote)
     asset_id = Asset.get_asset_id(tx_transfer)
 
-    assert asset_id == tx_transfer.asset.data_id
+    assert asset_id == tx_transfer.asset.id
 
 
 def test_asset_id_mismatch(b, user_pk):
@@ -121,12 +121,12 @@ def test_get_transactions_by_asset_id(b, user_pk, user_sk):
 
     tx_create = b.get_owned_ids(user_pk).pop()
     tx_create = b.get_transaction(tx_create.txid)
-    asset_id = tx_create.asset.data_id
+    asset_id = tx_create.id
     txs = b.get_transactions_by_asset_id(asset_id)
 
     assert len(txs) == 1
     assert txs[0].id == tx_create.id
-    assert txs[0].asset.data_id == asset_id
+    assert txs[0].id == asset_id
 
     # create a transfer transaction
     tx_transfer = Transaction.transfer(tx_create.to_inputs(), [([user_pk], 1)],
@@ -144,8 +144,9 @@ def test_get_transactions_by_asset_id(b, user_pk, user_sk):
     assert len(txs) == 2
     assert tx_create.id in [t.id for t in txs]
     assert tx_transfer.id in [t.id for t in txs]
-    assert asset_id == txs[0].asset.data_id
-    assert asset_id == txs[1].asset.data_id
+    # FIXME: can I rely on the ordering here?
+    assert asset_id == txs[0].id
+    assert asset_id == txs[1].asset.id
 
 
 @pytest.mark.usefixtures('inputs')
@@ -155,12 +156,12 @@ def test_get_transactions_by_asset_id_with_invalid_block(b, user_pk, user_sk):
 
     tx_create = b.get_owned_ids(user_pk).pop()
     tx_create = b.get_transaction(tx_create.txid)
-    asset_id = tx_create.asset.data_id
+    asset_id = tx_create.id
     txs = b.get_transactions_by_asset_id(asset_id)
 
     assert len(txs) == 1
     assert txs[0].id == tx_create.id
-    assert txs[0].asset.data_id == asset_id
+    assert txs[0].id == asset_id
 
     # create a transfer transaction
     tx_transfer = Transaction.transfer(tx_create.to_inputs(), [([user_pk], 1)],
@@ -181,11 +182,10 @@ def test_get_transactions_by_asset_id_with_invalid_block(b, user_pk, user_sk):
 @pytest.mark.usefixtures('inputs')
 def test_get_asset_by_id(b, user_pk, user_sk):
     from bigchaindb.common.transaction import AssetLink
-    from bigchaindb.models import Transaction
+    from bigchaindb.models import Asset, Transaction
 
     tx_create = b.get_owned_ids(user_pk).pop()
     tx_create = b.get_transaction(tx_create.txid)
-    asset_id = tx_create.asset.data_id
 
     # create a transfer transaction
     tx_transfer = Transaction.transfer(tx_create.to_inputs(), [([user_pk], 1)],
@@ -198,6 +198,7 @@ def test_get_asset_by_id(b, user_pk, user_sk):
     vote = b.vote(block.id, b.get_last_voted_block().id, True)
     b.write_vote(vote)
 
+    asset_id = Asset.get_asset_id([tx_create, tx_transfer])
     txs = b.get_transactions_by_asset_id(asset_id)
     assert len(txs) == 2
 

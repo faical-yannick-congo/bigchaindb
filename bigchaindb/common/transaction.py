@@ -1,6 +1,5 @@
 from copy import deepcopy
 from functools import reduce
-from uuid import uuid4
 
 from cryptoconditions import (Fulfillment as CCFulfillment,
                               ThresholdSha256Fulfillment, Ed25519Fulfillment)
@@ -384,17 +383,14 @@ class Asset(object):
 
         Attributes:
             data (dict): A dictionary of data that can be added to an Asset.
-            data_id (str): A unique identifier of `data`'s content.
             divisible (bool): A flag indicating if an Asset can be divided.
             updatable (bool): A flag indicating if an Asset can be updated.
             refillable (bool): A flag indicating if an Asset can be refilled.
     """
 
-    def __init__(self, data=None, data_id=None, divisible=False,
-                 updatable=False, refillable=False):
+    def __init__(self, data=None, divisible=False, updatable=False, refillable=False):
         """An Asset is not required to contain any extra data from outside."""
         self.data = data
-        self.data_id = data_id if data_id is not None else self.to_hash()
         self.divisible = divisible
         self.updatable = updatable
         self.refillable = refillable
@@ -416,7 +412,6 @@ class Asset(object):
                     format.
         """
         return {
-            'id': self.data_id,
             'divisible': self.divisible,
             'updatable': self.updatable,
             'refillable': self.refillable,
@@ -433,14 +428,10 @@ class Asset(object):
             Returns:
                 :class:`~bigchaindb.common.transaction.Asset`
         """
-        return cls(asset.get('data'), asset['id'],
+        return cls(asset.get('data'),
                    asset.get('divisible', False),
                    asset.get('updatable', False),
                    asset.get('refillable', False))
-
-    def to_hash(self):
-        """Generates a unqiue uuid for an Asset"""
-        return str(uuid4())
 
     @staticmethod
     def get_asset_id(transactions):
@@ -456,7 +447,7 @@ class Asset(object):
                 asset ID.
 
         Returns:
-            str: uuid of the asset.
+            str: ID of the asset.
 
         Raises:
             :exc:`AssetIdMismatch`: If the inputs are related to different
@@ -466,8 +457,9 @@ class Asset(object):
         if not isinstance(transactions, list):
             transactions = [transactions]
 
-        # create a set of asset_ids
-        asset_ids = {tx.asset.data_id for tx in transactions}
+        # create a set of the transactions' asset ids
+        asset_ids = {tx.id if tx.operation == Transaction.CREATE else tx.asset.id
+                     for tx in transactions}
 
         # check that all the transasctions have the same asset id
         if len(asset_ids) > 1:
