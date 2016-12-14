@@ -510,7 +510,7 @@ class Asset(object):
                                   ' greater than one')
 
 
-class AssetLink(Asset):
+class AssetLink(object):
     """An object for unidirectional linking to a Asset.
     """
 
