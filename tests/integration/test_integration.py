@@ -1,3 +1,4 @@
+import random
 import time
 import pytest
 
@@ -13,9 +14,8 @@ def inputs(user_pk):
     # create blocks with transactions for `USER` to spend
     for block in range(4):
         transactions = [
-            Transaction.create(
-                [b.me], [([user_pk], 1)],
-                metadata={'i': i})
+            Transaction.create([b.me], [([user_pk], 1)],
+                               metadata={'msg': random.random()})
             .sign([b.me_private])
             for i in range(10)
         ]
